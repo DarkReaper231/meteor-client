@@ -42,8 +42,7 @@ dependencies {
     modCompileOnly("io.vram:canvas-fabric-mc118:1.0.+") { transitive = false }
 
 	// Baritone integration
-    modImplementation "baritone:baritone:${project.baritone_version}"
-    include "baritone:baritone:${project.baritone_version}"
+    modCompileOnly "baritone:baritone:${project.baritone_version}"
 
     // Libraries
     library "meteordevelopment:orbit:${project.orbit_version}"

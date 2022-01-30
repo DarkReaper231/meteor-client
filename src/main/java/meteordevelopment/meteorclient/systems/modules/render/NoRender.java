@@ -118,6 +118,13 @@ public class NoRender extends Module {
         .build()
     );
 
+    private final Setting<Boolean> noCommandSuggestions = sgOverlay.add(new BoolSetting.Builder()
+        .name("command-suggestions")
+        .description("Disables command suggestions in chat.")
+        .defaultValue(false)
+        .build()
+    );
+
     // HUD
 
     private final Setting<Boolean> noBossBar = sgHUD.add(new BoolSetting.Builder()
@@ -354,6 +361,10 @@ public class NoRender extends Module {
 
     public boolean noEatParticles() {
         return isActive() && noEatParticles.get();
+    }
+
+    public boolean noCommandSuggestions() {
+        return isActive() && noCommandSuggestions.get();
     }
 
     // HUD
