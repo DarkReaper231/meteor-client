@@ -61,7 +61,9 @@ shadowJar {
 
 processResources {
     filesMatching("fabric.mod.json") {
-        expand "version": project.version, "devbuild": System.getenv("CIRCLE_BUILD_NUM") != null ? System.getenv("CIRCLE_BUILD_NUM") : ""
+        expand "version": project.version,
+               "devbuild": System.getenv("CIRCLE_BUILD_NUM") ?: "",
+               "commit": project.findProperty("commit") ?: ""
     }
 }
 
