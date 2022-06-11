@@ -67,7 +67,6 @@ public class Utils {
     public static final Color WHITE = new Color(255, 255, 255);
     public static boolean rendering3D = true;
     public static boolean renderingEntityOutline = false;
-    public static int minimumLightLevel;
     public static double frameTime;
     public static Screen screenToOpen;
 
@@ -144,7 +143,7 @@ public class Utils {
     }
 
     public static int getRenderDistance() {
-        return Math.max(mc.options.viewDistance, ((ClientPlayNetworkHandlerAccessor) mc.getNetworkHandler()).getChunkLoadDistance());
+        return Math.max(mc.options.getViewDistance().getValue(), ((ClientPlayNetworkHandlerAccessor) mc.getNetworkHandler()).getChunkLoadDistance());
     }
 
     public static int getWindowWidth() {
