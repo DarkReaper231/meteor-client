@@ -97,7 +97,7 @@ public class Hud extends System<Hud> implements Iterable<HudElement> {
     public void init() {
         settings.registerColorSettings(null);
 
-        register(TextHud.INFO);
+        register(MeteorTextHud.INFO);
         register(ItemHud.INFO);
         register(InventoryHud.INFO);
         register(CompassHud.INFO);
@@ -106,7 +106,6 @@ public class Hud extends System<Hud> implements Iterable<HudElement> {
         register(PlayerModelHud.INFO);
         register(ActiveModulesHud.INFO);
         register(LagNotifierHud.INFO);
-        register(ContainerViewerHud.INFO);
         register(PlayerRadarHud.INFO);
         register(ModuleInfosHud.INFO);
         register(PotionTimersHud.INFO);
@@ -171,19 +170,19 @@ public class Hud extends System<Hud> implements Iterable<HudElement> {
         int h = (int) Math.ceil(HudRenderer.INSTANCE.textHeight(true));
 
         // Top Left
-        add(TextHud.WATERMARK, 4, 4, XAnchor.Left, YAnchor.Top);
-        add(TextHud.FPS, 4, 4 + h, XAnchor.Left, YAnchor.Top);
-        add(TextHud.TPS, 4, 4 + h * 2, XAnchor.Left, YAnchor.Top);
-        add(TextHud.PING, 4, 4 + h * 3, XAnchor.Left, YAnchor.Top);
-        add(TextHud.SPEED, 4, 4 + h * 4, XAnchor.Left, YAnchor.Top);
+        add(MeteorTextHud.WATERMARK, 4, 4, XAnchor.Left, YAnchor.Top);
+        add(MeteorTextHud.FPS, 4, 4 + h, XAnchor.Left, YAnchor.Top);
+        add(MeteorTextHud.TPS, 4, 4 + h * 2, XAnchor.Left, YAnchor.Top);
+        add(MeteorTextHud.PING, 4, 4 + h * 3, XAnchor.Left, YAnchor.Top);
+        add(MeteorTextHud.SPEED, 4, 4 + h * 4, XAnchor.Left, YAnchor.Top);
 
         // Top Right
         add(ActiveModulesHud.INFO, -4, 4, XAnchor.Right, YAnchor.Top);
 
         // Bottom Right
-        add(TextHud.POSITION, -4, -4, XAnchor.Right, YAnchor.Bottom);
-        add(TextHud.OPPOSITE_POSITION, -4, -4 - h, XAnchor.Right, YAnchor.Bottom);
-        add(TextHud.ROTATION, -4, -4 - h * 2, XAnchor.Right, YAnchor.Bottom);
+        add(MeteorTextHud.POSITION, -4, -4, XAnchor.Right, YAnchor.Bottom);
+        add(MeteorTextHud.OPPOSITE_POSITION, -4, -4 - h, XAnchor.Right, YAnchor.Bottom);
+        add(MeteorTextHud.ROTATION, -4, -4 - h * 2, XAnchor.Right, YAnchor.Bottom);
     }
 
     @EventHandler
@@ -260,11 +259,13 @@ public class Hud extends System<Hud> implements Iterable<HudElement> {
             return this;
         }
 
-        active = tag.contains("active") && tag.getBoolean("active");
-        if (tag.contains("settings")) settings.fromTag(tag.getCompound("settings"));
+        active = tag.getBoolean("active");
+        settings.fromTag(tag.getCompound("settings"));
 
         // Elements
-        if (tag.contains("elements")) for (NbtElement e : tag.getList("elements", NbtElement.COMPOUND_TYPE)) {
+        elements.clear();
+
+        for (NbtElement e : tag.getList("elements", NbtElement.COMPOUND_TYPE)) {
             NbtCompound c = (NbtCompound) e;
             if (!c.contains("name")) continue;
 

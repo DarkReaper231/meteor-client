@@ -69,6 +69,8 @@ public class MeteorStarscript {
         ss.set("ping", MeteorStarscript::ping);
         ss.set("time", () -> Value.string(LocalTime.now().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))));
 
+        ss.set("string", MeteorStarscript::string); // TODO: Move to StandardLib
+
         // Meteor
         ss.set("meteor", new ValueMap()
             .set("modules", () -> Value.number(Modules.get().getAll().size()))
@@ -172,6 +174,12 @@ public class MeteorStarscript {
     }
 
     // Functions
+
+    private static Value string(Starscript ss, int argCount) {
+        if (argCount != 1) ss.error("string() requires 1 argument, got %d.", argCount);
+
+        return Value.string(ss.pop().toString());
+    }
 
     private static Value getModuleInfo(Starscript ss, int argCount) {
         if (argCount != 1) ss.error("meteor.get_module_info() requires 1 argument, got %d.", argCount);
@@ -380,7 +388,7 @@ public class MeteorStarscript {
 
     // Wrapping
 
-    private static Value wrap(ItemStack itemStack) {
+    public static Value wrap(ItemStack itemStack) {
         String name = itemStack.isEmpty() ? "" : Names.get(itemStack.getItem());
 
         int durability = 0;
@@ -395,7 +403,7 @@ public class MeteorStarscript {
         );
     }
 
-    private static Value wrap(BlockPos blockPos, BlockState blockState) {
+    public static Value wrap(BlockPos blockPos, BlockState blockState) {
         return Value.map(new ValueMap()
             .set("_toString", Value.string(Names.get(blockState.getBlock())))
             .set("pos", Value.map(new ValueMap()
@@ -407,7 +415,7 @@ public class MeteorStarscript {
         );
     }
 
-    private static Value wrap(Entity entity) {
+    public static Value wrap(Entity entity) {
         return Value.map(new ValueMap()
             .set("_toString", Value.string(entity.getName().getString()))
             .set("health", Value.number(entity instanceof LivingEntity e ? e.getHealth() : 0))
@@ -420,7 +428,7 @@ public class MeteorStarscript {
         );
     }
 
-    private static Value wrap(HorizontalDirection dir) {
+    public static Value wrap(HorizontalDirection dir) {
         return Value.map(new ValueMap()
             .set("_toString", Value.string(dir.name + " " + dir.axis))
             .set("name", Value.string(dir.name))
