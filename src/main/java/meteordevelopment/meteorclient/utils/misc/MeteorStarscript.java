@@ -20,8 +20,12 @@ import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.world.Dimension;
 import meteordevelopment.meteorclient.utils.world.TickRate;
+import meteordevelopment.starscript.Script;
+import meteordevelopment.starscript.Section;
 import meteordevelopment.starscript.StandardLib;
 import meteordevelopment.starscript.Starscript;
+import meteordevelopment.starscript.compiler.Compiler;
+import meteordevelopment.starscript.compiler.Parser;
 import meteordevelopment.starscript.utils.Error;
 import meteordevelopment.starscript.utils.StarscriptError;
 import meteordevelopment.starscript.value.Value;
@@ -31,9 +35,14 @@ import net.minecraft.block.BlockState;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
+import net.minecraft.stat.Stat;
+import net.minecraft.stat.Stats;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
@@ -68,8 +77,6 @@ public class MeteorStarscript {
         ss.set("fps", () -> Value.number(MinecraftClientAccessor.getFps()));
         ss.set("ping", MeteorStarscript::ping);
         ss.set("time", () -> Value.string(LocalTime.now().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))));
-
-        ss.set("string", MeteorStarscript::string); // TODO: Move to StandardLib
 
         // Meteor
         ss.set("meteor", new ValueMap()
@@ -142,6 +149,17 @@ public class MeteorStarscript {
             .set("hand_or_offhand", MeteorStarscript::handOrOffhand)
             .set("get_item", MeteorStarscript::getItem)
             .set("count_items", MeteorStarscript::countItems)
+
+            .set("xp", new ValueMap()
+                .set("level", () -> Value.number(mc.player != null ? mc.player.experienceLevel : 0))
+                .set("progress", () -> Value.number(mc.player != null ? mc.player.experienceProgress : 0))
+                .set("total", () -> Value.number(mc.player != null ? mc.player.totalExperience : 0))
+            )
+
+            .set("has_potion_effect", MeteorStarscript::hasPotionEffect)
+            .set("get_potion_effect", MeteorStarscript::getPotionEffect)
+
+            .set("get_stat", MeteorStarscript::getStat)
         );
 
         // Crosshair target
@@ -160,9 +178,53 @@ public class MeteorStarscript {
         );
     }
 
+    // Helpers
+
+    public static Script compile(String source) {
+        Parser.Result result = Parser.parse(source);
+
+        if (result.hasErrors()) {
+            for (Error error : result.errors) printChatError(error);
+            return null;
+        }
+
+        return Compiler.compile(result);
+    }
+
+    public static Section runSection(Script script, StringBuilder sb) {
+        try {
+            return ss.run(script, sb);
+        }
+        catch (StarscriptError error) {
+            printChatError(error);
+            return null;
+        }
+    }
+    public static String run(Script script, StringBuilder sb) {
+        Section section = runSection(script, sb);
+        return section != null ? section.toString() : null;
+    }
+
+    public static Section runSection(Script script) {
+        return runSection(script, new StringBuilder());
+    }
+    public static String run(Script script) {
+        return run(script, new StringBuilder());
+    }
+
+    // Errors
+
     public static void printChatError(int i, Error error) {
-        if (i != -1) ChatUtils.error("Starscript", "%d, %d '%c': %s", i, error.character, error.ch, error.message);
-        else ChatUtils.error("Starscript", "%d '%c': %s", error.character, error.ch, error.message);
+        String caller = getCallerName();
+
+        if (caller != null) {
+            if (i != -1) ChatUtils.error("Starscript", "%d, %d '%c': %s (from %s)", i, error.character, error.ch, error.message, caller);
+            else ChatUtils.error("Starscript", "%d '%c': %s (from %s)", error.character, error.ch, error.message, caller);
+        }
+        else {
+            if (i != -1) ChatUtils.error("Starscript", "%d, %d '%c': %s", i, error.character, error.ch, error.message);
+            else ChatUtils.error("Starscript", "%d '%c': %s", error.character, error.ch, error.message);
+        }
     }
 
     public static void printChatError(Error error) {
@@ -170,15 +232,90 @@ public class MeteorStarscript {
     }
 
     public static void printChatError(StarscriptError e) {
-        ChatUtils.error("Starscript", e.getMessage());
+        String caller = getCallerName();
+
+        if (caller != null) ChatUtils.error("Starscript", "%s (from %s)", e.getMessage(), caller);
+        else ChatUtils.error("Starscript", "%s", e.getMessage());
+    }
+
+    private static String getCallerName() {
+        StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+        if (elements.length == 0) return null;
+
+        for (int i = 1; i < elements.length; i++) {
+            String name = elements[i].getClassName();
+
+            if (name.startsWith(Starscript.class.getPackageName())) continue;
+            if (name.equals(MeteorStarscript.class.getName())) continue;
+
+            return name.substring(name.lastIndexOf('.') + 1);
+        }
+
+        return null;
     }
 
     // Functions
 
-    private static Value string(Starscript ss, int argCount) {
-        if (argCount != 1) ss.error("string() requires 1 argument, got %d.", argCount);
+    private static long lastRequestedStatsTime = 0;
 
-        return Value.string(ss.pop().toString());
+    private static Value hasPotionEffect(Starscript ss, int argCount) {
+        if (argCount < 1) ss.error("player.has_potion_effect() requires 1 argument, got %d.", argCount);
+        if (mc.player == null) return Value.bool(false);
+
+        Identifier name = new Identifier(ss.popString("First argument to player.has_potion_effect() needs to a string."));
+
+        StatusEffect effect = Registry.STATUS_EFFECT.get(name);
+        if (effect == null) return Value.bool(false);
+
+        StatusEffectInstance effectInstance = mc.player.getStatusEffect(effect);
+        return Value.bool(effectInstance != null);
+    }
+
+    private static Value getPotionEffect(Starscript ss, int argCount) {
+        if (argCount < 1) ss.error("player.get_potion_effect() requires 1 argument, got %d.", argCount);
+        if (mc.player == null) return Value.null_();
+
+        Identifier name = new Identifier(ss.popString("First argument to player.get_potion_effect() needs to a string."));
+
+        StatusEffect effect = Registry.STATUS_EFFECT.get(name);
+        if (effect == null) return Value.null_();
+
+        StatusEffectInstance effectInstance = mc.player.getStatusEffect(effect);
+        if (effectInstance == null) return Value.null_();
+
+        return wrap(effectInstance);
+    }
+
+    private static Value getStat(Starscript ss, int argCount) {
+        if (argCount < 1) ss.error("player.get_stat() requires 1 argument, got %d.", argCount);
+        if (mc.player == null) return Value.number(0);
+
+        long time = System.currentTimeMillis();
+        if ((time - lastRequestedStatsTime) / 1000.0 >= 1 && mc.getNetworkHandler() != null) {
+            mc.getNetworkHandler().sendPacket(new ClientStatusC2SPacket(ClientStatusC2SPacket.Mode.REQUEST_STATS));
+            lastRequestedStatsTime = time;
+        }
+
+        String type = argCount > 1 ? ss.popString("First argument to player.get_stat() needs to be a string.") : "custom";
+        Identifier name = new Identifier(ss.popString((argCount > 1 ? "Second" : "First") + " argument to player.get_stat() needs to be a string."));
+
+        Stat<?> stat = switch (type) {
+            case "mined" -> Stats.MINED.getOrCreateStat(Registry.BLOCK.get(name));
+            case "crafted" -> Stats.CRAFTED.getOrCreateStat(Registry.ITEM.get(name));
+            case "used" -> Stats.USED.getOrCreateStat(Registry.ITEM.get(name));
+            case "broken" -> Stats.BROKEN.getOrCreateStat(Registry.ITEM.get(name));
+            case "picked_up" -> Stats.PICKED_UP.getOrCreateStat(Registry.ITEM.get(name));
+            case "dropped" -> Stats.DROPPED.getOrCreateStat(Registry.ITEM.get(name));
+            case "killed" -> Stats.KILLED.getOrCreateStat(Registry.ENTITY_TYPE.get(name));
+            case "killed_by" -> Stats.KILLED_BY.getOrCreateStat(Registry.ENTITY_TYPE.get(name));
+            case "custom" -> {
+                name = Registry.CUSTOM_STAT.get(name);
+                yield name != null ? Stats.CUSTOM.getOrCreateStat(name) : null;
+            }
+            default -> null;
+        };
+
+        return Value.number(stat != null ? mc.player.getStatHandler().getStat(stat) : 0);
     }
 
     private static Value getModuleInfo(Starscript ss, int argCount) {
@@ -378,11 +515,10 @@ public class MeteorStarscript {
     }
 
     private static Value crosshairValue() {
-        if (mc.crosshairTarget == null) return Value.null_();
+        if (mc.world == null || mc.crosshairTarget == null) return Value.null_();
 
         if (mc.crosshairTarget.getType() == HitResult.Type.MISS) return Value.string("");
-        if (mc.crosshairTarget instanceof BlockHitResult hit)
-            return wrap(hit.getBlockPos(), mc.world.getBlockState(hit.getBlockPos()));
+        if (mc.crosshairTarget instanceof BlockHitResult hit) return wrap(hit.getBlockPos(), mc.world.getBlockState(hit.getBlockPos()));
         return wrap(((EntityHitResult) mc.crosshairTarget).getEntity());
     }
 
@@ -433,6 +569,13 @@ public class MeteorStarscript {
             .set("_toString", Value.string(dir.name + " " + dir.axis))
             .set("name", Value.string(dir.name))
             .set("axis", Value.string(dir.axis))
+        );
+    }
+
+    public static Value wrap(StatusEffectInstance effectInstance) {
+        return Value.map(new ValueMap()
+            .set("duration", effectInstance.getDuration())
+            .set("level", effectInstance.getAmplifier() + 1)
         );
     }
 }
