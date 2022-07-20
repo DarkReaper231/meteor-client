@@ -114,7 +114,7 @@ publishing {
     publications {
         java(MavenPublication) {
             artifactId = "meteor-client"
-            version = project.hasProperty("devbuild") ? "SNAPSHOT" : project.mod_version
+            version = project.hasProperty("devbuild") ? (project.mod_version + "-SNAPSHOT") : project.mod_version
 
             artifact(remapJar) {
                 builtBy remapJar
