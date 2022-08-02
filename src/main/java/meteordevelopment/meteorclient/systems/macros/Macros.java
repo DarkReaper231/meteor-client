@@ -1,6 +1,6 @@
 /*
- * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
- * Copyright (c) 2021 Meteor Development.
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
  */
 
 package meteordevelopment.meteorclient.systems.macros;
@@ -82,7 +82,7 @@ public class Macros extends System<Macros> implements Iterable<Macro> {
     public Macros fromTag(NbtCompound tag) {
         for (Macro macro : macros) MeteorClient.EVENT_BUS.unsubscribe(macro);
 
-        macros = NbtUtils.listFromTag(tag.getList("macros", 10), tag1 -> new Macro().fromTag((NbtCompound) tag1));
+        macros = NbtUtils.listFromTag(tag.getList("macros", 10), Macro::new);
 
         for (Macro macro : macros) MeteorClient.EVENT_BUS.subscribe(macro);
         return this;

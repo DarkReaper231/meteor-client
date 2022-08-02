@@ -1,6 +1,6 @@
 /*
- * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
- * Copyright (c) 2022 Meteor Development.
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
  */
 
 package meteordevelopment.meteorclient.systems.hud;
@@ -109,6 +109,7 @@ public class Hud extends System<Hud> implements Iterable<HudElement> {
         register(PlayerRadarHud.INFO);
         register(ModuleInfosHud.INFO);
         register(PotionTimersHud.INFO);
+        register(CombatHud.INFO);
 
         // Default config
         if (isFirstInit) resetToDefaultElements();

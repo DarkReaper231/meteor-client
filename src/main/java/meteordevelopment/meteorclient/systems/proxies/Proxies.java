@@ -1,6 +1,6 @@
 /*
- * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
- * Copyright (c) 2021 Meteor Development.
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
  */
 
 package meteordevelopment.meteorclient.systems.proxies;
@@ -83,7 +83,7 @@ public class Proxies extends System<Proxies> implements Iterable<Proxy> {
 
     @Override
     public Proxies fromTag(NbtCompound tag) {
-        proxies = NbtUtils.listFromTag(tag.getList("proxies", 10), tag1 -> new Proxy().fromTag((NbtCompound) tag1));
+        proxies = NbtUtils.listFromTag(tag.getList("proxies", 10), Proxy::new);
 
         return this;
     }

@@ -1,6 +1,6 @@
 /*
- * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
- * Copyright (c) 2021 Meteor Development.
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
  */
 
 package meteordevelopment.meteorclient.systems.macros;
@@ -9,6 +9,7 @@ import meteordevelopment.meteorclient.utils.misc.ISerializable;
 import meteordevelopment.meteorclient.utils.misc.Keybind;
 import meteordevelopment.meteorclient.utils.misc.MeteorStarscript;
 import meteordevelopment.meteorclient.utils.misc.NbtUtils;
+import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import meteordevelopment.starscript.Script;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -28,6 +29,11 @@ public class Macro implements ISerializable<Macro> {
 
     private final List<Script> scripts = new ArrayList<>(1);
     private boolean dirty;
+
+    public Macro() {}
+    public Macro(NbtElement tag) {
+        fromTag((NbtCompound) tag);
+    }
 
     public void addMessage(String message) {
         messages.add(message);
@@ -55,8 +61,7 @@ public class Macro implements ISerializable<Macro> {
                 String message = MeteorStarscript.run(script);
 
                 if (message != null) {
-                    if (message.startsWith("/")) mc.player.sendCommand(message.substring(1));
-                    else mc.player.sendChatMessage(message);
+                    ChatUtils.sendPlayerMsg(message);
                 }
             }
 

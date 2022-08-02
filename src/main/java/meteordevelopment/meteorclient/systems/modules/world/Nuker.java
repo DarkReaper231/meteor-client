@@ -1,6 +1,6 @@
 /*
- * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
- * Copyright (c) 2021 Meteor Development.
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
  */
 
 package meteordevelopment.meteorclient.systems.modules.world;
@@ -169,7 +169,7 @@ public class Nuker extends Module {
     );
 
     private final Setting<ShapeMode> shapeModeBox = sgRender.add(new EnumSetting.Builder<ShapeMode>()
-        .name("nuke-block-mode")
+        .name("nuke-box-mode")
         .description("How the shape for the bounding box is rendered.")
         .defaultValue(ShapeMode.Both)
         .build()
@@ -280,6 +280,7 @@ public class Nuker extends Module {
     @EventHandler
     private void onTickPre(TickEvent.Pre event) {
         renderBlocks.forEach(RenderBlock::tick);
+        renderBlocks.removeIf(renderBlock -> renderBlock.ticks <= 0);
 
         // Update timer
         if (timer > 0) {

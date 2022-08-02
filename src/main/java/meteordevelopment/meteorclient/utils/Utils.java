@@ -1,6 +1,6 @@
 /*
- * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
- * Copyright (c) 2021 Meteor Development.
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
  */
 
 package meteordevelopment.meteorclient.utils;
@@ -68,7 +68,7 @@ public class Utils {
     public static double frameTime;
     public static Screen screenToOpen;
 
-    @Init(stage = InitStage.Pre)
+    @PreInit
     public static void init() {
         MeteorClient.EVENT_BUS.subscribe(Utils.class);
     }

@@ -1,6 +1,6 @@
 /*
- * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
- * Copyright (c) 2021 Meteor Development.
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
  */
 
 package meteordevelopment.meteorclient.gui.themes.meteor.widgets.input;
@@ -23,8 +23,8 @@ public class WMeteorTextBox extends WTextBox implements MeteorWidget {
 
     private double animProgress;
 
-    public WMeteorTextBox(String text, CharFilter filter, Class<? extends Renderer> renderer) {
-        super(text, filter, renderer);
+    public WMeteorTextBox(String text, String placeholder, CharFilter filter, Class<? extends Renderer> renderer) {
+        super(text, placeholder, filter, renderer);
     }
 
     @Override
@@ -116,6 +116,9 @@ public class WMeteorTextBox extends WTextBox implements MeteorWidget {
         // Text content
         if (!text.isEmpty()) {
             this.renderer.render(renderer, x + pad - overflowWidth, y + pad, text, theme.textColor.get());
+        }
+        else if (placeholder != null) {
+            this.renderer.render(renderer, x + pad - overflowWidth, y + pad, placeholder, theme.placeholderColor.get());
         }
 
         // Text highlighting

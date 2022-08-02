@@ -1,3 +1,8 @@
+/*
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
+ */
+
 package meteordevelopment.meteorclient.utils.render;
 
 import meteordevelopment.meteorclient.MeteorClient;
@@ -32,7 +37,15 @@ public class FontUtils {
         if (stream == null) return null;
 
         byte[] bytes = Utils.readBytes(stream);
-        if (bytes.length < 2) return null;
+        if (bytes.length < 5) return null;
+
+        if (
+            bytes[0] != 0 ||
+            bytes[1] != 1 ||
+            bytes[2] != 0 ||
+            bytes[3] != 0 ||
+            bytes[4] != 0
+        ) return null;
 
         ByteBuffer buffer = BufferUtils.createByteBuffer(bytes.length).put(bytes).flip();
         STBTTFontinfo fontInfo = STBTTFontinfo.create();

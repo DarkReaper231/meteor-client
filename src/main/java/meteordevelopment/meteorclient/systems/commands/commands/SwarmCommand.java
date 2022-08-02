@@ -1,6 +1,6 @@
 /*
- * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
- * Copyright (c) 2021 Meteor Development.
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
  */
 
 package meteordevelopment.meteorclient.systems.commands.commands;
@@ -344,7 +344,7 @@ public class SwarmCommand extends Command {
                 if (swarm.isHost()) {
                     swarm.host.sendMessage(context.getInput());
                 } else if (swarm.isWorker()) {
-                    mc.player.sendChatMessage(StringArgumentType.getString(context, "command"));
+                    ChatUtils.sendPlayerMsg(StringArgumentType.getString(context, "command"));
                 }
             } else {
                 throw SWARM_NOT_ACTIVE.create();

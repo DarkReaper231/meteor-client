@@ -1,16 +1,15 @@
 /*
- * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
- * Copyright (c) 2021 Meteor Development.
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
  */
 
 package meteordevelopment.meteorclient.utils.player;
 
 import baritone.api.BaritoneAPI;
-import meteordevelopment.meteorclient.addons.AddonManager;
-import meteordevelopment.meteorclient.mixin.ChatHudAccessor;
+import meteordevelopment.meteorclient.MeteorClient;
+import meteordevelopment.meteorclient.mixininterface.IChatHud;
 import meteordevelopment.meteorclient.systems.config.Config;
-import meteordevelopment.meteorclient.utils.Init;
-import meteordevelopment.meteorclient.utils.InitStage;
+import meteordevelopment.meteorclient.utils.PostInit;
 import net.minecraft.text.*;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Pair;
@@ -29,12 +28,12 @@ public class ChatUtils {
 
     private static Text PREFIX;
 
-    @Init(stage = InitStage.Post)
+    @PostInit
     public static void init() {
         PREFIX = Text.literal("")
             .setStyle(Style.EMPTY.withFormatting(Formatting.GRAY))
             .append("[")
-            .append(Text.literal("Meteor").setStyle(Style.EMPTY.withColor(new TextColor(AddonManager.METEOR.color.getPacked()))))
+            .append(Text.literal("Meteor").setStyle(Style.EMPTY.withColor(new TextColor(MeteorClient.ADDON.color.getPacked()))))
             .append("] ");
     }
 
@@ -59,7 +58,15 @@ public class ChatUtils {
         forcedPrefixClassName = klass.getName();
     }
 
+    // Player
+
+    /** Sends the message as if the user typed it into chat. */
+    public static void sendPlayerMsg(String message) {
+        mc.inGameHud.getChatHud().getChatScreen().sendMessage(message, false);
+    }
+
     // Default
+
     public static void info(String message, Object... args) {
         sendMsg(Formatting.GRAY, message, args);
     }
@@ -69,6 +76,7 @@ public class ChatUtils {
     }
 
     // Warning
+
     public static void warning(String message, Object... args) {
         sendMsg(Formatting.YELLOW, message, args);
     }
@@ -78,6 +86,7 @@ public class ChatUtils {
     }
 
     // Error
+
     public static void error(String message, Object... args) {
         sendMsg(Formatting.RED, message, args);
     }
@@ -87,6 +96,7 @@ public class ChatUtils {
     }
 
     // Misc
+
     public static void sendMsg(Text message) {
         sendMsg(null, message);
     }
@@ -123,7 +133,7 @@ public class ChatUtils {
 
         if (!Config.get().deleteChatFeedback.get()) id = 0;
 
-        ((ChatHudAccessor) mc.inGameHud.getChatHud()).add(message, id);
+        ((IChatHud) mc.inGameHud.getChatHud()).add(message, id);
     }
 
     private static MutableText getCustomPrefix(String prefixTitle, Formatting prefixColor) {

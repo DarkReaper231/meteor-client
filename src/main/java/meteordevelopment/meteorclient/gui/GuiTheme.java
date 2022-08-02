@@ -1,6 +1,6 @@
 /*
- * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
- * Copyright (c) 2021 Meteor Development.
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
+ * Copyright (c) Meteor Development.
  */
 
 package meteordevelopment.meteorclient.gui;
@@ -95,9 +95,18 @@ public abstract class GuiTheme implements ISerializable<GuiTheme> {
 
     public abstract WSlider slider(double value, double min, double max);
 
-    public abstract WTextBox textBox(String text, CharFilter filter, Class<? extends WTextBox.Renderer> renderer);
+    public abstract WTextBox textBox(String text, String placeholder, CharFilter filter, Class<? extends WTextBox.Renderer> renderer);
+    public WTextBox textBox(String text, CharFilter filter, Class<? extends WTextBox.Renderer> renderer) {
+        return textBox(text, null, filter, renderer);
+    }
+    public WTextBox textBox(String text, String placeholder, CharFilter filter) {
+        return textBox(text, placeholder, filter, null);
+    }
     public WTextBox textBox(String text, CharFilter filter) {
         return textBox(text, filter, null);
+    }
+    public WTextBox textBox(String text, String placeholder) {
+        return textBox(text, placeholder, (text1, c) -> true, null);
     }
     public WTextBox textBox(String text) {
         return textBox(text, (text1, c) -> true, null);
