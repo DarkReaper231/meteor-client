@@ -10,6 +10,7 @@ import it.unimi.dsi.fastutil.ints.IntList;
 import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
 import meteordevelopment.meteorclient.gui.screens.settings.*;
 import meteordevelopment.meteorclient.gui.utils.Cell;
+import meteordevelopment.meteorclient.gui.utils.CharFilter;
 import meteordevelopment.meteorclient.gui.utils.SettingsWidgetFactory;
 import meteordevelopment.meteorclient.gui.widgets.*;
 import meteordevelopment.meteorclient.gui.widgets.containers.*;
@@ -186,7 +187,8 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
     }
 
     private void stringW(WTable table, StringSetting setting) {
-        Cell<WTextBox> cell = table.add(theme.textBox(setting.get(), (text, c) -> true, setting.renderer));
+        CharFilter filter = setting.filter == null ? (text, c) -> true : setting.filter;
+        Cell<WTextBox> cell = table.add(theme.textBox(setting.get(), filter, setting.renderer));
         if (setting.wide) cell.minWidth(Utils.getWindowWidth() - Utils.getWindowWidth() / 4.0);
 
         WTextBox textBox = cell.expandX().widget();
@@ -348,17 +350,17 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
 
     private void fontW(WTable table, FontFaceSetting setting) {
         WHorizontalList list = table.add(theme.horizontalList()).expandX().widget();
-        WLabel label = list.add(theme.label(setting.get().info().family())).widget();
+        WLabel label = list.add(theme.label(setting.get().info.family())).widget();
 
         WButton button = list.add(theme.button("Select")).expandCellX().widget();
         button.action = () -> {
             WidgetScreen screen = new FontFaceSettingScreen(theme, setting);
-            screen.onClosed(() -> label.set(setting.get().info().family()));
+            screen.onClosed(() -> label.set(setting.get().info.family()));
 
             mc.setScreen(screen);
         };
 
-        reset(list, setting, () -> label.set(Fonts.DEFAULT_FONT.info().family()));
+        reset(list, setting, () -> label.set(Fonts.DEFAULT_FONT.info.family()));
     }
 
     private void colorListW(WTable table, ColorListSetting setting) {

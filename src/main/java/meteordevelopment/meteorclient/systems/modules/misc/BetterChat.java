@@ -5,8 +5,8 @@
 
 package meteordevelopment.meteorclient.systems.modules.misc;
 
-import it.unimi.dsi.fastutil.chars.Char2CharArrayMap;
 import it.unimi.dsi.fastutil.chars.Char2CharMap;
+import it.unimi.dsi.fastutil.chars.Char2CharOpenHashMap;
 import meteordevelopment.meteorclient.events.game.ReceiveMessageEvent;
 import meteordevelopment.meteorclient.events.game.SendMessageEvent;
 import meteordevelopment.meteorclient.mixin.ChatHudAccessor;
@@ -19,11 +19,10 @@ import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.gui.hud.ChatHudLine;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.HoverEvent;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
+import net.minecraft.client.util.ChatMessages;
+import net.minecraft.text.*;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.MathHelper;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -200,7 +199,7 @@ public class BetterChat extends Module {
         .build()
     );
 
-    private final Char2CharMap SMALL_CAPS = new Char2CharArrayMap();
+    private final Char2CharMap SMALL_CAPS = new Char2CharOpenHashMap();
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm");
 
     public BetterChat() {
@@ -240,15 +239,11 @@ public class BetterChat extends Module {
             message = Text.literal("  ").append(message);
         }
 
-        for (int i = 0; i < antiSpamDepth.get(); i++) {
-            if (antiSpam.get()) {
-                Text antiSpammed = appendAntiSpam(message, i);
+        if (antiSpam.get()) {
+            Text antiSpammed = appendAntiSpam(message);
 
-                if (antiSpammed != null) {
-                    message = antiSpammed;
-                    ((ChatHudAccessor) mc.inGameHud.getChatHud()).getMessages().remove(i);
-                    ((ChatHudAccessor) mc.inGameHud.getChatHud()).getVisibleMessages().remove(i);
-                }
+            if (antiSpammed != null) {
+                message = antiSpammed;
             }
         }
 
@@ -256,42 +251,61 @@ public class BetterChat extends Module {
     }
 
     private static final Pattern antiSpamRegex = Pattern.compile(".*(\\([0-9]+\\)$)");
-    private Text appendAntiSpam(Text text, int index) {
-        List<ChatHudLine.Visible> visibleMessages = ((ChatHudAccessor) mc.inGameHud.getChatHud()).getVisibleMessages();
-        if (visibleMessages.isEmpty() || index < 0 || index > visibleMessages.size() - 1) return null;
 
-        ChatHudLine.Visible visibleMessage = visibleMessages.get(index);
+    /**
+     * @author Crosby
+     * Adding author tag because this is spaghetti code
+     */
+    private Text appendAntiSpam(Text text) {
+        Text returnText = null;
+        int messageIndex = -1;
+        MutableText originalMessage = null;
 
-        MutableText parsed = Text.literal("");
+        for (int i = 0; i < antiSpamDepth.get(); i++) {
+            List<ChatHudLine> messages = ((ChatHudAccessor) mc.inGameHud.getChatHud()).getMessages();
+            if (messages.isEmpty() || i > messages.size() - 1) return null;
 
-        visibleMessage.content().accept((i, style, codePoint) -> {
-            parsed.append(Text.literal(new String(Character.toChars(codePoint))).setStyle(style));
-            return true;
-        });
+            MutableText message = messages.get(i).content().copy();
+            String oldMessage = message.getString();
+            String newMessage = text.getString();
 
-        String oldMessage = parsed.getString();
-        String newMessage = text.getString();
+            if (oldMessage.equals(newMessage)) {
+                originalMessage = message.copy();
+                messageIndex = i;
+                returnText = message.append(Text.literal(" (2)").formatted(Formatting.GRAY));
+                break;
+            } else {
+                Matcher matcher = antiSpamRegex.matcher(oldMessage);
 
-        if (oldMessage.equals(newMessage)) {
-            return parsed.append(Text.literal(" (2)").formatted(Formatting.GRAY));
-        }
-        else {
-            Matcher matcher = antiSpamRegex.matcher(oldMessage);
+                if (!matcher.matches()) continue;
 
-            if (!matcher.matches()) return null;
+                String group = matcher.group(matcher.groupCount());
+                int number = Integer.parseInt(group.substring(1, group.length() - 1));
 
-            String group = matcher.group(matcher.groupCount());
-            int number = Integer.parseInt(group.substring(1, group.length() - 1));
+                String counter = " (" + number + ")";
 
-            String counter = " (" + number + ")";
-
-            if (oldMessage.substring(0, oldMessage.length() - counter.length()).equals(newMessage)) {
-                for (int i = 0; i < counter.length(); i++) parsed.getSiblings().remove(parsed.getSiblings().size() - 1);
-                return parsed.append(Text.literal( " (" + (number + 1) + ")").formatted(Formatting.GRAY));
+                if (oldMessage.substring(0, oldMessage.length() - counter.length()).equals(newMessage)) {
+                    message.getSiblings().remove(message.getSiblings().size() - 1);
+                    originalMessage = message.copy();
+                    messageIndex = i;
+                    returnText = message.append(Text.literal(" (" + (number + 1) + ")").formatted(Formatting.GRAY));
+                    break;
+                }
             }
         }
 
-        return null;
+        if (returnText != null) {
+            ((ChatHudAccessor) mc.inGameHud.getChatHud()).getMessages().remove(messageIndex);
+
+            List<OrderedText> list = ChatMessages.breakRenderedChatMessageLines(originalMessage, MathHelper.floor((double)mc.inGameHud.getChatHud().getWidth() / mc.inGameHud.getChatHud().getChatScale()), mc.textRenderer);
+            int lines = list.size();
+
+            for (int i = 0; i < lines; i++) {
+                ((ChatHudAccessor) mc.inGameHud.getChatHud()).getVisibleMessages().remove(messageIndex);
+            }
+        }
+
+        return returnText;
     }
 
     @EventHandler
@@ -339,8 +353,7 @@ public class BetterChat extends Module {
         StringBuilder sb = new StringBuilder();
 
         for (char ch : message.toCharArray()) {
-            if (SMALL_CAPS.containsKey(ch)) sb.append(SMALL_CAPS.get(ch));
-            else sb.append(ch);
+            sb.append(SMALL_CAPS.getOrDefault(ch, ch));
         }
 
         return sb.toString();

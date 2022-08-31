@@ -43,22 +43,39 @@ public class ToggleCommand extends Command {
                     })
                 )
             )
-            .then(argument("module", ModuleArgumentType.module())
+            .then(argument("module", ModuleArgumentType.create())
                 .executes(context -> {
-                    Module m = ModuleArgumentType.getModule(context, "module");
+                    Module m = ModuleArgumentType.get(context);
                     m.toggle();
                     return SINGLE_SUCCESS;
                 })
                 .then(literal("on")
                     .executes(context -> {
-                        Module m = ModuleArgumentType.getModule(context, "module");
+                        Module m = ModuleArgumentType.get(context);
                         if (!m.isActive()) m.toggle();
                         return SINGLE_SUCCESS;
                     }))
                 .then(literal("off")
                     .executes(context -> {
-                        Module m = ModuleArgumentType.getModule(context, "module");
+                        Module m = ModuleArgumentType.get(context);
                         if (m.isActive()) m.toggle();
+                        return SINGLE_SUCCESS;
+                    })
+                )
+            )
+            .then(literal("hud")
+                .executes(context -> {
+                    Hud.get().active = !(Hud.get().active);
+                    return SINGLE_SUCCESS;
+                })
+                .then(literal("on")
+                    .executes(context -> {
+                        Hud.get().active = true;
+                        return SINGLE_SUCCESS;
+                    })
+                ).then(literal("off")
+                    .executes(context -> {
+                        Hud.get().active = false;
                         return SINGLE_SUCCESS;
                     })
                 )

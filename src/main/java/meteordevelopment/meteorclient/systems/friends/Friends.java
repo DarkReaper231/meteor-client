@@ -30,7 +30,7 @@ public class Friends extends System<Friends> implements Iterable<Friend> {
     }
 
     public boolean add(Friend friend) {
-        if (friend.name.isEmpty()) return false;
+        if (friend.name.isEmpty() || friend.name.contains(" ")) return false;
 
         if (!friends.contains(friend)) {
             friends.add(friend);
@@ -51,9 +51,19 @@ public class Friends extends System<Friends> implements Iterable<Friend> {
         return false;
     }
 
+    public Friend get(String name) {
+        for (Friend friend : friends) {
+            if (friend.name.equals(name)) {
+                return friend;
+            }
+        }
+
+        return null;
+    }
+
     public Friend get(UUID uuid) {
         for (Friend friend : friends) {
-            if (friend.id.equals(uuid)) {
+            if (friend.id != null && friend.id.equals(uuid)) {
                 return friend;
             }
         }
@@ -77,6 +87,10 @@ public class Friends extends System<Friends> implements Iterable<Friend> {
         return friends.size();
     }
 
+    public boolean isEmpty() {
+        return friends.isEmpty();
+    }
+
     @Override
     public @NotNull Iterator<Friend> iterator() {
         return friends.iterator();
@@ -93,19 +107,16 @@ public class Friends extends System<Friends> implements Iterable<Friend> {
 
     @Override
     public Friends fromTag(NbtCompound tag) {
-        List<Friend> saved = NbtUtils.listFromTag(tag.getList("friends", 10), nbt -> {
-            NbtCompound friendTag = (NbtCompound) nbt;
-            if (!friendTag.contains("id")) return null;
-            return new Friend(friendTag);
-        });
-
+        List<Friend> saved = NbtUtils.listFromTag(tag.getList("friends", 10), Friend::new);
         friends.clear();
 
         for (Friend friend : saved) {
             MeteorExecutor.execute(() -> {
-                if (friend.updateName()) {
-                    friends.add(friend);
-                }
+                if (friend.name == null && !friend.updateName()) return;
+                if (friend.id == null) friend.updateInfo();
+
+                friends.add(friend);
+                friend.updateHead();
             });
         }
 
