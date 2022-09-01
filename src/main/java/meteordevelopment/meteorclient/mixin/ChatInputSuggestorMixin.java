@@ -11,9 +11,12 @@ import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.suggestion.Suggestions;
 import meteordevelopment.meteorclient.systems.commands.Commands;
 import meteordevelopment.meteorclient.systems.config.Config;
+import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.systems.modules.render.NoRender;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ChatInputSuggestor;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.command.CommandSource;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -64,5 +67,10 @@ public abstract class ChatInputSuggestorMixin {
             }
             ci.cancel();
         }
+    }
+
+    @Inject(method = "render", at = @At(value = "HEAD"), cancellable = true)
+    public void render(MatrixStack matrices, int mouseX, int mouseY, CallbackInfo info) {
+        if (Modules.get().get(NoRender.class).noCommandSuggestions()) info.cancel();
     }
 }
