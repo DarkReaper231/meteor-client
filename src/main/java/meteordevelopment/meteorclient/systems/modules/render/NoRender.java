@@ -162,6 +162,13 @@ public class NoRender extends Module {
         .build()
     );
 
+    private final Setting<Boolean> noMessageSignatureIndicator = sgHUD.add(new BoolSetting.Builder()
+        .name("message-signature-indicator")
+        .description("Disables chat message signature indicator on the left of the message.")
+        .defaultValue(false)
+        .build()
+    );
+
     // World
 
     private final Setting<Boolean> noWeather = sgWorld.add(new BoolSetting.Builder()
@@ -400,6 +407,10 @@ public class NoRender extends Module {
 
     public boolean noPotionIcons() {
         return isActive() && noPotionIcons.get();
+    }
+
+    public boolean noMessageSignatureIndicator() {
+        return isActive() && noMessageSignatureIndicator.get();
     }
 
     // World
