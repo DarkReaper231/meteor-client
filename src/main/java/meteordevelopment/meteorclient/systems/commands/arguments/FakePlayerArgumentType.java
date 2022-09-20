@@ -1,14 +1,13 @@
 package meteordevelopment.meteorclient.systems.commands.arguments;
 
-import com.google.common.collect.Streams;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import meteordevelopment.meteorclient.systems.friends.Friend;
-import meteordevelopment.meteorclient.systems.friends.Friends;
+import meteordevelopment.meteorclient.utils.entity.fakeplayer.FakePlayerEntity;
+import meteordevelopment.meteorclient.utils.entity.fakeplayer.FakePlayerManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -16,15 +15,15 @@ import java.util.concurrent.CompletableFuture;
 
 import static net.minecraft.command.CommandSource.suggestMatching;
 
-public class FriendArgumentType implements ArgumentType<String> {
+public class FakePlayerArgumentType implements ArgumentType<String> {
     private static final Collection<String> EXAMPLES = List.of("seasnail8169", "MineGame159");
 
-    public static FriendArgumentType create() {
-        return new FriendArgumentType();
+    public static FakePlayerArgumentType create() {
+        return new FakePlayerArgumentType();
     }
 
-    public static Friend get(CommandContext<?> context) {
-        return Friends.get().get(context.getArgument("friend", String.class));
+    public static FakePlayerEntity get(CommandContext<?> context) {
+        return FakePlayerManager.get(context.getArgument("fp", String.class));
     }
 
     @Override
@@ -34,7 +33,7 @@ public class FriendArgumentType implements ArgumentType<String> {
 
     @Override
     public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-        return suggestMatching(Streams.stream(Friends.get()).map(Friend::getName), builder);
+        return suggestMatching(FakePlayerManager.stream().map(FakePlayerEntity::getEntityName), builder);
     }
 
     @Override
