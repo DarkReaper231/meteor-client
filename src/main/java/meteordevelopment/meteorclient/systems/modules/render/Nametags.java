@@ -107,14 +107,15 @@ public class Nametags extends Module {
         .build()
     );
 
-    private final Setting<Boolean> excludeBots = sgItems.add(new BoolSetting.Builder()
+    //Players
+
+    private final Setting<Boolean> excludeBots = sgPlayers.add(new BoolSetting.Builder()
         .name("exclude-bots")
         .description("Only render non-bot nametags.")
         .defaultValue(true)
         .build()
     );
 
-    //Players
 
     private final Setting<Boolean> displayItems = sgPlayers.add(new BoolSetting.Builder()
         .name("display-items")
@@ -261,7 +262,7 @@ public class Nametags extends Module {
                 if (EntityUtils.getGameMode((PlayerEntity) entity) == null && excludeBots.get()) continue;
             }
 
-            if (!culling.get() || entity.getPos().distanceTo(cameraPos) < maxCullRange.get()) {
+            if (!culling.get() || PlayerUtils.isWithinCamera(entity, maxCullRange.get())) {
                 entityList.add(entity);
             }
         }
