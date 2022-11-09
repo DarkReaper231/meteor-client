@@ -35,8 +35,11 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.SwordItem;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.util.Hand;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 
 import java.util.ArrayList;
@@ -82,6 +85,14 @@ public class KillAura extends Module {
         .description("Randomly teleport around the target.")
         .defaultValue(false)
         .visible(() -> !onlyWhenLook.get())
+        .build()
+    );
+
+    private final Setting<Boolean> superReach = sgGeneral.add(new BoolSetting.Builder()
+        .name("super-reach")
+        .description("Gives you very long hands.")
+        .defaultValue(false)
+        .visible(() -> !randomTeleport.get())
         .build()
     );
 
@@ -154,6 +165,16 @@ public class KillAura extends Module {
         .defaultValue(3.5)
         .min(0)
         .sliderMax(6)
+        .build()
+    );
+
+    private final Setting<Double> superRange = sgTargeting.add(new DoubleSetting.Builder()
+        .name("super-range")
+        .description("The maximum range the entity can be attacked with super reach.")
+        .defaultValue(20)
+        .min(0)
+        .sliderMax(200)
+        .visible(superReach::get)
         .build()
     );
 
@@ -327,7 +348,7 @@ public class KillAura extends Module {
         if (entity.equals(mc.player) || entity.equals(mc.cameraEntity)) return false;
         if ((entity instanceof LivingEntity && ((LivingEntity) entity).isDead()) || !entity.isAlive()) return false;
         if (noRightClick.get() && (mc.interactionManager.isBreakingBlock() || mc.player.isUsingItem())) return false;
-        if (!PlayerUtils.isWithin(entity, range.get())) return false;
+        if (superReach.get() ? !PlayerUtils.isWithin(entity, superRange.get()) : !PlayerUtils.isWithin(entity, range.get())) return false;
         if (!entities.get().getBoolean(entity.getType())) return false;
         if (!nametagged.get() && entity.hasCustomName()) return false;
         if (!PlayerUtils.canSeeEntity(entity) && !PlayerUtils.isWithin(entity, wallsRange.get())) return false;
@@ -376,12 +397,41 @@ public class KillAura extends Module {
     }
 
     private void hitEntity(Entity target) {
-        mc.interactionManager.attackEntity(mc.player, target);
-        mc.player.swingHand(Hand.MAIN_HAND);
+        if (superReach.get() && PlayerUtils.canSeeEntity(target)) {
+            Vec3d pos = target.getPos();
+            Vec3d previous = mc.player.getPos();
+
+            teleport(previous, pos);
+
+            if (mc.interactionManager == null) return;
+
+            mc.interactionManager.attackEntity(mc.player, target);
+            mc.player.swingHand(Hand.MAIN_HAND);
+
+            teleport(pos, previous);
+        } else {
+            mc.interactionManager.attackEntity(mc.player, target);
+            mc.player.swingHand(Hand.MAIN_HAND);
+        }
     }
 
     private void rotate(Entity target, Runnable callback) {
         Rotations.rotate(Rotations.getYaw(target), Rotations.getPitch(target, Target.Body), callback);
+    }
+
+    private void teleport(Vec3d prev, Vec3d pos) {
+        double distance = prev.distanceTo(pos);
+        for (int i = 0; i < distance; i += 9.5) {
+            double prog = i / distance;
+            double newX = MathHelper.lerp(prog, prev.x, pos.x);
+            double newY = MathHelper.lerp(prog, prev.y, pos.y);
+            double newZ = MathHelper.lerp(prog, prev.z, pos.z);
+
+            mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
+                newX, newY, newZ, true));
+        }
+        mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
+            pos.x, pos.y, pos.z, true));
     }
 
     private boolean itemInHand() {
