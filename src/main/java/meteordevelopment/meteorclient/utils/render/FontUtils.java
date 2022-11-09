@@ -129,7 +129,7 @@ public class FontUtils {
 
             FontFace fontFace = new SystemFontFace(fontInfo, file.toPath());
             if (!addFont(fontList, fontFace)) {
-                MeteorClient.LOG.warn("Failed to load system font {}", fontFace);
+                //MeteorClient.LOG.warn("Failed to load system font {}", fontFace);
             }
         }
     }
