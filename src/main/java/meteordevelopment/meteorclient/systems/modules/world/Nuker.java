@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.systems.modules.world;
 
+import meteordevelopment.meteorclient.events.entity.player.BlockBreakingCooldownEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
@@ -18,6 +19,7 @@ import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.BlockIterator;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
+import meteordevelopment.orbit.EventPriority;
 import net.minecraft.block.Block;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.util.Hand;
@@ -59,7 +61,6 @@ public class Nuker extends Module {
         .visible(() -> shape.get() != Shape.Cube)
         .build()
     );
-
 
     private final Setting<Integer> range_up = sgGeneral.add(new IntSetting.Builder()
         .name("up")
@@ -152,25 +153,31 @@ public class Nuker extends Module {
         .build()
     );
 
-    // Whitelist
+    // Whitelist and blacklist
 
-    private final Setting<Boolean> whitelistEnabled = sgWhitelist.add(new BoolSetting.Builder()
-        .name("whitelist-enabled")
-        .description("Only mines selected blocks.")
-        .defaultValue(false)
+    private final Setting<ListMode> listMode = sgWhitelist.add(new EnumSetting.Builder<ListMode>()
+        .name("list-mode")
+        .description("Selection mode.")
+        .defaultValue(ListMode.Whitelist)
+        .build()
+    );
+
+    private final Setting<List<Block>> blacklist = sgWhitelist.add(new BlockListSetting.Builder()
+        .name("blacklist")
+        .description("The blocks you don't want to mine.")
+        .visible(() -> listMode.get() == ListMode.Blacklist)
         .build()
     );
 
     private final Setting<List<Block>> whitelist = sgWhitelist.add(new BlockListSetting.Builder()
         .name("whitelist")
         .description("The blocks you want to mine.")
-        .visible(whitelistEnabled::get)
+        .visible(() -> listMode.get() == ListMode.Whitelist)
         .build()
     );
 
     // Rendering
 
-    // Bounding box
     private final Setting<Boolean> enableRenderBounding = sgRender.add(new BoolSetting.Builder()
         .name("bounding-box")
         .description("Enable rendering bounding box for Cube and Uniform Cube.")
@@ -198,8 +205,6 @@ public class Nuker extends Module {
         .defaultValue(new SettingColor(16,106,144, 255))
         .build()
     );
-
-    // Broken blocks
 
     private final Setting<Boolean> enableRenderBreaking = sgRender.add(new BoolSetting.Builder()
         .name("broken-blocks")
@@ -232,7 +237,6 @@ public class Nuker extends Module {
         .build()
     );
 
-
     private final Pool<BlockPos.Mutable> blockPosPool = new Pool<>(BlockPos.Mutable::new);
     private final List<BlockPos.Mutable> blocks = new ArrayList<>();
 
@@ -248,11 +252,9 @@ public class Nuker extends Module {
     int maxh = 0;
     int maxv = 0;
 
-
     public Nuker() {
         super(Categories.World, "nuker", "Breaks blocks around you.");
     }
-
 
     @Override
     public void onActivate() {
@@ -270,7 +272,6 @@ public class Nuker extends Module {
                 event.renderer.box(box, sideColorBox.get(), lineColorBox.get(), shapeModeBox.get(), 0);
             }
         }
-
     }
 
     @EventHandler
@@ -335,7 +336,6 @@ public class Nuker extends Module {
         }
         box = new Box(pos1, pos2);
 
-
         // Find blocks to break
         BlockIterator.register(Math.max((int) Math.ceil(range.get()+1), maxh), Math.max((int) Math.ceil(range.get()), maxv), (blockPos, blockState) -> {
             // Check for air, unbreakable blocks and distance
@@ -355,8 +355,9 @@ public class Nuker extends Module {
             // Smash
             if (mode.get() == Mode.Smash && blockState.getHardness(mc.world, blockPos) != 0) return;
 
-            // Check for selected
-            if (whitelistEnabled.get() && !whitelist.get().contains(blockState.getBlock())) return;
+            // Check whitelist or blacklist
+            if (listMode.get() == ListMode.Whitelist && !whitelist.get().contains(blockState.getBlock())) return;
+            if (listMode.get() == ListMode.Blacklist && blacklist.get().contains(blockState.getBlock())) return;
 
             // Add block
             blocks.add(blockPosPool.get().set(blockPos));
@@ -365,7 +366,6 @@ public class Nuker extends Module {
         // Break block if found
         BlockIterator.after(() -> {
             // Sort blocks
-
 			if (sortMode.get() == SortMode.TopDown)
                 blocks.sort(Comparator.comparingDouble(value -> -1*value.getY()));
             else if (sortMode.get() != SortMode.None)
@@ -421,6 +421,16 @@ public class Nuker extends Module {
             blocks.clear();
         });
     }
+    
+    @EventHandler(priority = EventPriority.HIGHEST)
+    private void onBlockBreakingCooldown(BlockBreakingCooldownEvent event) {
+        event.cooldown = 0;
+    }
+
+    public enum ListMode {
+        Whitelist,
+        Blacklist
+    }
 
     public enum Mode {
         All,
@@ -433,14 +443,13 @@ public class Nuker extends Module {
         Closest,
         Furthest,
         TopDown
-
     }
+
     public enum Shape {
         Cube,
         UniformCube,
         Sphere
     }
-
 
     public static double maxDist(double x1, double y1, double z1, double x2, double y2, double z2) {
         // Gets the largest X, Y or Z difference, manhattan style
