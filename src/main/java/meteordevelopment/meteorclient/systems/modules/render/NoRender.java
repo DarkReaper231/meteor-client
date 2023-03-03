@@ -125,6 +125,13 @@ public class NoRender extends Module {
         .build()
     );
 
+    private final Setting<Boolean> noEnchantGlint = sgOverlay.add(new BoolSetting.Builder()
+        .name("enchantment-glint")
+        .description("Disables rending of the enchantment glint.")
+        .defaultValue(false)
+        .build()
+    );
+
     // HUD
 
     private final Setting<Boolean> noBossBar = sgHUD.add(new BoolSetting.Builder()
@@ -151,6 +158,13 @@ public class NoRender extends Module {
     private final Setting<Boolean> noHeldItemName = sgHUD.add(new BoolSetting.Builder()
         .name("held-item-name")
         .description("Disables rendering of the held item name.")
+        .defaultValue(false)
+        .build()
+    );
+
+    private final Setting<Boolean> noObfuscation = sgHUD.add(new BoolSetting.Builder()
+        .name("obfuscation")
+        .description("Disables obfuscation styling of characters.")
         .defaultValue(false)
         .build()
     );
@@ -230,6 +244,13 @@ public class NoRender extends Module {
     private final Setting<Boolean> noSkylightUpdates = sgWorld.add(new BoolSetting.Builder()
         .name("skylight-updates")
         .description("Disables rendering of skylight updates.")
+        .defaultValue(false)
+        .build()
+    );
+
+    private final Setting<Boolean> noBeaconBeams = sgWorld.add(new BoolSetting.Builder()
+        .name("beacon-beams")
+        .description("Disables rendering of beacon beams.")
         .defaultValue(false)
         .build()
     );
@@ -401,6 +422,10 @@ public class NoRender extends Module {
         return isActive() && noCommandSuggestions.get();
     }
 
+    public boolean noEnchantGlint() {
+        return isActive() && noEnchantGlint.get();
+    }
+
     // HUD
 
     public boolean noBossBar() {
@@ -417,6 +442,10 @@ public class NoRender extends Module {
 
     public boolean noHeldItemName() {
         return isActive() && noHeldItemName.get();
+    }
+
+    public boolean noObfuscation() {
+        return isActive() && noObfuscation.get();
     }
 
     public boolean noPotionIcons() {
@@ -463,6 +492,10 @@ public class NoRender extends Module {
 
     public boolean noSkylightUpdates() {
         return isActive() && noSkylightUpdates.get();
+    }
+
+    public boolean noBeaconBeams() {
+        return isActive() && noBeaconBeams.get();
     }
 
     public boolean noFallingBlocks() {
