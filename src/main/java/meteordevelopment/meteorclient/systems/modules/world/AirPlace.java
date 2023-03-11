@@ -14,8 +14,11 @@ import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.Entity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.network.packet.c2s.play.VehicleMoveC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -102,9 +105,9 @@ public class AirPlace extends Module {
             if (superRange.get()) {
                 teleport(previous, pos);
                 BlockUtils.place(((BlockHitResult) hitResult).getBlockPos(), Hand.MAIN_HAND, mc.player.getInventory().selectedSlot, false, 0, true, true, false);
-                teleport(pos, previous);
+            } else {
+                BlockUtils.place(((BlockHitResult) hitResult).getBlockPos(), Hand.MAIN_HAND, mc.player.getInventory().selectedSlot, false, 0, true, true, false);
             }
-            BlockUtils.place(((BlockHitResult) hitResult).getBlockPos(), Hand.MAIN_HAND, mc.player.getInventory().selectedSlot, false, 0, true, true, false);
         }
     }
 
@@ -120,16 +123,27 @@ public class AirPlace extends Module {
 
     private void teleport(Vec3d prev, Vec3d pos) {
         double distance = prev.distanceTo(pos);
+
         for (int i = 0; i < distance; i += 9.5) {
             double prog = i / distance;
             double newX = MathHelper.lerp(prog, prev.x, pos.x);
             double newY = MathHelper.lerp(prog, prev.y, pos.y);
             double newZ = MathHelper.lerp(prog, prev.z, pos.z);
 
-            mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
-                newX, newY, newZ, true));
+            playerMove(newX, newY, newZ);
         }
-        mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
-            pos.x, pos.y, pos.z, true));
+
+        playerMove(pos.x, pos.y + 1, pos.z);
+    }
+
+    private void playerMove(double x, double y, double z) {
+        if (mc.player.hasVehicle()) {
+            Entity vehicle = mc.player.getVehicle();
+            vehicle.setPosition(x, y, z);
+            mc.player.networkHandler.sendPacket(new VehicleMoveC2SPacket(vehicle));
+        } else {
+            mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y, z, true));
+            mc.player.setPosition(x, y, z);
+        }
     }
 }

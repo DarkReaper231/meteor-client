@@ -25,6 +25,7 @@ import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.meteorclient.utils.world.TickRate;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
@@ -39,6 +40,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.*;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
+import net.minecraft.network.packet.c2s.play.VehicleMoveC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
@@ -431,17 +433,28 @@ public class KillAura extends Module {
 
     private void teleport(Vec3d prev, Vec3d pos) {
         double distance = prev.distanceTo(pos);
+
         for (int i = 0; i < distance; i += 9.5) {
             double prog = i / distance;
             double newX = MathHelper.lerp(prog, prev.x, pos.x);
             double newY = MathHelper.lerp(prog, prev.y, pos.y);
             double newZ = MathHelper.lerp(prog, prev.z, pos.z);
 
-            mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
-                newX, newY, newZ, true));
+            playerMove(newX, newY, newZ);
         }
-        mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
-            pos.x, pos.y, pos.z, true));
+
+        playerMove(pos.x, pos.y, pos.z);
+    }
+
+    private void playerMove(double x, double y, double z) {
+        if (mc.player.hasVehicle()) {
+            Entity vehicle = mc.player.getVehicle();
+            vehicle.setPosition(x, y, z);
+            mc.player.networkHandler.sendPacket(new VehicleMoveC2SPacket(vehicle));
+        } else {
+            mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y, z, true));
+            mc.player.setPosition(x, y, z);
+        }
     }
 
     private boolean itemInHand() {
