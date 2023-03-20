@@ -11,17 +11,23 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import meteordevelopment.meteorclient.systems.commands.Command;
 import meteordevelopment.meteorclient.systems.commands.arguments.CompoundNbtTagArgumentType;
 import meteordevelopment.meteorclient.systems.config.Config;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.argument.NbtPathArgumentType;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtHelper;
 import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.HoverEvent;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
+import net.minecraft.text.*;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.BlockPos;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.mojang.brigadier.Command.SINGLE_SUCCESS;
 
@@ -75,30 +81,12 @@ public class NbtCommand extends Command {
         builder.then(literal("get").executes(context -> {
             ItemStack stack = mc.player.getInventory().getMainHandStack();
 
-            if (stack == null) {
-                error("You must hold an item in your main hand.");
+            if (stack.isEmpty()) {
+                target(false);
             } else {
-                NbtCompound tag = stack.getNbt();
+                NbtCompound tag = stack.getOrCreateNbt();
 
-                MutableText copyButton = Text.literal("NBT");
-                copyButton.setStyle(copyButton.getStyle()
-                        .withFormatting(Formatting.UNDERLINE)
-                        .withClickEvent(new ClickEvent(
-                                ClickEvent.Action.RUN_COMMAND,
-                                this.toString("copy")
-                        ))
-                        .withHoverEvent(new HoverEvent(
-                                HoverEvent.Action.SHOW_TEXT,
-                                Text.literal("Copy the NBT data to your clipboard.")
-                        )));
-
-                MutableText text = Text.literal("");
-                text.append(copyButton);
-
-                if (tag == null) text.append("{}");
-                else text.append(" ").append(NbtHelper.toPrettyPrintedText(tag));
-
-                info(text);
+                getInfo(false, tag);
             }
 
             return SINGLE_SUCCESS;
@@ -107,24 +95,12 @@ public class NbtCommand extends Command {
         builder.then(literal("copy").executes(context -> {
             ItemStack stack = mc.player.getInventory().getMainHandStack();
 
-            if (stack == null) {
-                error("You must hold an item in your main hand.");
+            if (stack.isEmpty()) {
+                target(true);
             } else {
                 NbtCompound tag = stack.getOrCreateNbt();
-                mc.keyboard.setClipboard(tag.toString());
-                MutableText nbt = Text.literal("NBT");
-                nbt.setStyle(nbt.getStyle()
-                        .withFormatting(Formatting.UNDERLINE)
-                        .withHoverEvent(new HoverEvent(
-                                HoverEvent.Action.SHOW_TEXT,
-                                NbtHelper.toPrettyPrintedText(tag)
-                        )));
 
-                MutableText text = Text.literal("");
-                text.append(nbt);
-                text.append(Text.literal(" data copied!"));
-
-                info(text);
+                copyData(false, tag, null);
             }
 
             return SINGLE_SUCCESS;
@@ -153,6 +129,126 @@ public class NbtCommand extends Command {
 
             return SINGLE_SUCCESS;
         })));
+    }
+
+    private void target(boolean copy) {
+        HitResult target = mc.crosshairTarget;
+        if (target.getType() == HitResult.Type.BLOCK) {
+            BlockPos pos = ((BlockHitResult) target).getBlockPos();
+            BlockEntity be = mc.player.world.getBlockEntity(pos);
+            NbtCompound tag = (be != null) ? be.createNbt() : new NbtCompound();
+            BlockState state = mc.player.world.getBlockState(pos);
+
+            if (copy) {
+                copyData(true, tag, state);
+            } else {
+                getInfo(false, tag);
+                getInfo(true, state);
+            }
+        } else if (target.getType() == HitResult.Type.ENTITY) {
+            NbtCompound tag = ((EntityHitResult) target).getEntity().writeNbt(new NbtCompound());
+
+            if (copy) {
+                copyData(false, tag, null);
+            } else {
+                getInfo(false, tag);
+            }
+        } else {
+            error("You must hold an item in your main hand or look at block/entity.");
+        }
+    }
+
+    private void getInfo(boolean isBlockState, Object data) {
+        Text dataString = isBlockState ? formatBlockState(data) : NbtHelper.toPrettyPrintedText((NbtCompound) data);
+        String dataType = isBlockState ? "STATE" : "NBT";
+
+        MutableText copyButton = Text.literal(dataType);
+        copyButton.setStyle(copyButton.getStyle()
+            .withFormatting(Formatting.UNDERLINE)
+            .withClickEvent(new ClickEvent(
+                ClickEvent.Action.RUN_COMMAND,
+                this.toString("copy")
+            ))
+            .withHoverEvent(new HoverEvent(
+                HoverEvent.Action.SHOW_TEXT,
+                Text.literal("Copy the data to your clipboard.")
+            )));
+
+        MutableText text = Text.literal("");
+        text.append(copyButton);
+
+        if (data == null) text.append(" {}");
+        else text.append(" ").append(dataString);
+
+        info(text);
+    }
+
+    private void copyData(boolean isBlockState, NbtCompound tag, BlockState state) {
+        String dataType = isBlockState ? "NBT + STATE" : "NBT";
+
+        MutableText button = Text.literal("");
+        if (isBlockState) {
+            button.append(formatBlockState(state));
+            button.append(NbtHelper.toPrettyPrintedText(tag));
+        }
+
+        String propertiesString = "";
+        if (isBlockState) {
+            String stateString = state.toString();
+            Pattern pattern = Pattern.compile("\\[(.*?)\\]");
+            Matcher matcher = pattern.matcher(stateString);
+            propertiesString = matcher.find() ? matcher.group(1) : "";
+        }
+
+        mc.keyboard.setClipboard(isBlockState ? "[" + propertiesString + "]" + tag.toString() : tag.toString());
+        MutableText builder = Text.literal(dataType);
+        builder.setStyle(builder.getStyle()
+            .withFormatting(Formatting.UNDERLINE)
+            .withHoverEvent(new HoverEvent(
+                HoverEvent.Action.SHOW_TEXT,
+                isBlockState ? button : NbtHelper.toPrettyPrintedText(tag)
+            )));
+
+        MutableText text = Text.literal("");
+        text.append(builder);
+        text.append(Text.literal(" data copied!"));
+
+        info(text);
+    }
+
+    private MutableText formatBlockState(Object state) {
+        String stateString = state.toString();
+        Pattern pattern = Pattern.compile("\\[(.*?)\\]");
+        Matcher matcher = pattern.matcher(stateString);
+        String propertiesString = matcher.find() ? matcher.group(1) : "";
+        String[] properties = propertiesString.split(",");
+        MutableText text = Text.literal("");
+
+        text.append(Text.literal("["));
+
+        for (String property : properties) {
+            if (property.equals("")) {
+                text.append(Text.literal("."));
+                break;
+            }
+
+            String[] keyValue = property.split("=");
+
+            MutableText keyText = Text.literal(keyValue[0])
+                .formatted(Formatting.AQUA);
+            MutableText valueText = Text.literal(keyValue[1])
+                .formatted(Formatting.GOLD);
+
+            text.append(keyText);
+            text.append(Text.literal(" = "));
+            text.append(valueText);
+            text.append(Text.literal(", "));
+        }
+
+        text.getSiblings().remove(text.getSiblings().size() - 1);
+        text.append(Text.literal("]"));
+
+        return text;
     }
 
     private void setStack(ItemStack stack) {
