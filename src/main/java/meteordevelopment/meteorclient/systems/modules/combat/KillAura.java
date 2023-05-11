@@ -9,7 +9,6 @@ import baritone.api.BaritoneAPI;
 import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.mixininterface.IVec3d;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.systems.modules.Categories;
@@ -48,6 +47,7 @@ import net.minecraft.world.GameMode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class KillAura extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
@@ -254,7 +254,6 @@ public class KillAura extends Module {
 
     CrystalAura ca = Modules.get().get(CrystalAura.class);
     private final List<Entity> targets = new ArrayList<>();
-    private final Vec3d hitVec = new Vec3d(0, 0, 0);
     private int switchTimer, hitTimer;
     private boolean wasPathing = false;
 
@@ -299,16 +298,13 @@ public class KillAura extends Module {
         Entity primary = targets.get(0);
 
         if (autoSwitch.get()) {
-            FindItemResult weaponResult = InvUtils.findInHotbar(itemStack -> {
-                Item item = itemStack.getItem();
-
-                return switch (weapon.get()) {
-                    case Axe -> item instanceof AxeItem;
-                    case Sword -> item instanceof SwordItem;
-                    case Both -> item instanceof AxeItem || item instanceof SwordItem;
-                    default -> true;
-                };
-            });
+            Predicate<ItemStack> predicate = switch (weapon.get()) {
+                case Axe -> stack -> stack.getItem() instanceof AxeItem;
+                case Sword -> stack -> stack.getItem() instanceof SwordItem;
+                case Both -> stack -> stack.getItem() instanceof AxeItem || stack.getItem() instanceof SwordItem;
+                default -> o -> true;
+            };
+            FindItemResult weaponResult = InvUtils.findInHotbar(predicate);
 
             if (shouldShieldBreak()) {
                 FindItemResult axeResult = InvUtils.findInHotbar(itemStack -> itemStack.getItem() instanceof AxeItem);
@@ -319,13 +315,6 @@ public class KillAura extends Module {
         }
 
         if (!itemInHand()) return;
-
-        Box hitbox = primary.getBoundingBox();
-        ((IVec3d) hitVec).set(
-            MathHelper.clamp(mc.player.getX(), hitbox.minX, hitbox.maxX),
-            MathHelper.clamp(mc.player.getY(), hitbox.minY, hitbox.maxY),
-            MathHelper.clamp(mc.player.getZ(), hitbox.minZ, hitbox.maxZ)
-        );
 
         if (rotation.get() == RotationMode.Always) Rotations.rotate(Rotations.getYaw(primary), Rotations.getPitch(primary, Target.Body));
         if (pauseOnCombat.get() && BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing() && !wasPathing) {
@@ -360,12 +349,12 @@ public class KillAura extends Module {
         if ((entity instanceof LivingEntity && ((LivingEntity) entity).isDead()) || !entity.isAlive()) return false;
 
         Box hitbox = entity.getBoundingBox();
-        ((IVec3d)hitVec).set(
+        if (!PlayerUtils.isWithin(
             MathHelper.clamp(mc.player.getX(), hitbox.minX, hitbox.maxX),
             MathHelper.clamp(mc.player.getY(), hitbox.minY, hitbox.maxY),
-            MathHelper.clamp(mc.player.getZ(), hitbox.minZ, hitbox.maxZ)
-        );
-        if (superReach.get() ? !PlayerUtils.isWithin(entity, superRange.get()) : !PlayerUtils.isWithin(hitVec, range.get())) return false;
+            MathHelper.clamp(mc.player.getZ(), hitbox.minZ, hitbox.maxZ),
+            superReach.get() ? superRange.get() : range.get()
+        )) return false;
 
         if (!entities.get().getBoolean(entity.getType())) return false;
         if (ignoreNamed.get() && entity.hasCustomName()) return false;
