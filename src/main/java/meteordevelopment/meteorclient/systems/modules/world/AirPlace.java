@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.systems.modules.world;
 
+import net.minecraft.item.SpawnEggItem;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
@@ -98,7 +99,7 @@ public class AirPlace extends Module {
         Vec3d pos = hitResult.getPos();
         Vec3d previous = mc.player.getPos();
 
-        if (!(hitResult instanceof BlockHitResult) || !(mc.player.getMainHandStack().getItem() instanceof BlockItem)) return;
+        if (!(hitResult instanceof BlockHitResult) || !(mc.player.getMainHandStack().getItem() instanceof BlockItem) && !(mc.player.getMainHandStack().getItem() instanceof SpawnEggItem)) return;
 
         if (mc.options.useKey.isPressed()) {
             if (superRange.get()) {
@@ -113,8 +114,8 @@ public class AirPlace extends Module {
     @EventHandler
     private void onRender(Render3DEvent event) {
         if (!(hitResult instanceof BlockHitResult)
-            || !mc.world.getBlockState(((BlockHitResult) hitResult).getBlockPos()).getMaterial().isReplaceable()
-            || !(mc.player.getMainHandStack().getItem() instanceof BlockItem)
+            || !mc.world.getBlockState(((BlockHitResult) hitResult).getBlockPos()).isReplaceable()
+            || !(mc.player.getMainHandStack().getItem() instanceof BlockItem) && !(mc.player.getMainHandStack().getItem() instanceof SpawnEggItem)
             || !render.get()) return;
 
         event.renderer.box(((BlockHitResult) hitResult).getBlockPos(), sideColor.get(), lineColor.get(), shapeMode.get(), 0);
