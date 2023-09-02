@@ -136,9 +136,9 @@ public class NbtCommand extends Command {
         HitResult target = mc.crosshairTarget;
         if (target.getType() == HitResult.Type.BLOCK) {
             BlockPos pos = ((BlockHitResult) target).getBlockPos();
-            BlockEntity be = mc.player.world.getBlockEntity(pos);
+            BlockEntity be = mc.player.getWorld().getBlockEntity(pos);
             NbtCompound tag = (be != null) ? be.createNbt() : new NbtCompound();
-            BlockState state = mc.player.world.getBlockState(pos);
+            BlockState state = mc.player.getWorld().getBlockState(pos);
 
             if (copy) {
                 copyData(true, tag, state);
