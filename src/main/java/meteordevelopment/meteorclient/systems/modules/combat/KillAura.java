@@ -162,7 +162,7 @@ public class KillAura extends Module {
         .description("Determines the age of the mobs to target (baby, adult, or both).")
         .defaultValue(EntityAge.Adult)
         .build()
-    };
+    );
 
     private final Setting<Double> superRange = sgTargeting.add(new DoubleSetting.Builder()
         .name("super-range")
