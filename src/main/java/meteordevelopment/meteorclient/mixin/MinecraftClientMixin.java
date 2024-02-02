@@ -21,6 +21,7 @@ import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.player.FastUse;
 import meteordevelopment.meteorclient.systems.modules.render.UnfocusedCPU;
 import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.misc.CPSUtils;
 import meteordevelopment.meteorclient.utils.misc.MeteorStarscript;
 import meteordevelopment.meteorclient.utils.network.OnlinePlayers;
 import meteordevelopment.starscript.Script;
@@ -82,6 +83,7 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
     @Inject(at = @At("HEAD"), method = "tick")
     private void onPreTick(CallbackInfo info) {
         OnlinePlayers.update();
+
         doItemUseCalled = false;
 
         getProfiler().push(MeteorClient.MOD_ID + "_pre_update");
@@ -97,6 +99,11 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
         getProfiler().push(MeteorClient.MOD_ID + "_post_update");
         MeteorClient.EVENT_BUS.post(TickEvent.Post.get());
         getProfiler().pop();
+    }
+
+    @Inject(method = "doAttack", at = @At("HEAD"))
+    private void onAttack(CallbackInfoReturnable<Boolean> cir) {
+        CPSUtils.onAttack();
     }
 
     @Inject(method = "doItemUse", at = @At("HEAD"))
@@ -134,7 +141,7 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
         return MeteorClient.EVENT_BUS.post(ItemUseCrosshairTargetEvent.get(original)).target;
     }
 
-    @ModifyReturnValue(method = "reloadResources(Z)Ljava/util/concurrent/CompletableFuture;", at = @At("RETURN"))
+    @ModifyReturnValue(method = "reloadResources(ZLnet/minecraft/client/MinecraftClient$LoadingContext;)Ljava/util/concurrent/CompletableFuture;", at = @At("RETURN"))
     private CompletableFuture<Void> onReloadResourcesNewCompletableFuture(CompletableFuture<Void> original) {
         return original.thenRun(() -> MeteorClient.EVENT_BUS.post(ResourcePacksReloadedEvent.get()));
     }

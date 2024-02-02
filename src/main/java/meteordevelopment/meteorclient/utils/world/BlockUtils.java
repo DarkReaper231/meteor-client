@@ -187,8 +187,8 @@ public class BlockUtils {
         BlockPos pos = blockPos instanceof BlockPos.Mutable ? new BlockPos(blockPos) : blockPos;
 
         if (mc.interactionManager.isBreakingBlock())
-            mc.interactionManager.updateBlockBreakingProgress(pos, Direction.UP);
-        else mc.interactionManager.attackBlock(pos, Direction.UP);
+            mc.interactionManager.updateBlockBreakingProgress(pos, getDirection(blockPos));
+        else mc.interactionManager.attackBlock(pos, getDirection(blockPos));
 
         if (swing) mc.player.swingHand(Hand.MAIN_HAND);
         else mc.getNetworkHandler().sendPacket(new HandSwingC2SPacket(Hand.MAIN_HAND));
@@ -244,25 +244,42 @@ public class BlockUtils {
     }
 
     public static MobSpawn isValidMobSpawn(BlockPos blockPos, boolean newMobSpawnLightLevel) {
-        int spawnLightLimit = newMobSpawnLightLevel ? 0 : 7;
-        if (!(mc.world.getBlockState(blockPos).getBlock() instanceof AirBlock) ||
-            mc.world.getBlockState(blockPos.down()).getBlock() == Blocks.BEDROCK) return MobSpawn.Never;
+        return isValidMobSpawn(blockPos, mc.world.getBlockState(blockPos), newMobSpawnLightLevel ? 0 : 7);
+    }
 
-        if (!topSurface(mc.world.getBlockState(blockPos.down()))) {
-            if (mc.world.getBlockState(blockPos.down()).getCollisionShape(mc.world, blockPos.down()) != VoxelShapes.fullCube())
+    public static MobSpawn isValidMobSpawn(BlockPos blockPos, BlockState blockState, int spawnLightLimit) {
+        if (!(blockState.getBlock() instanceof AirBlock)) return MobSpawn.Never;
+
+        BlockPos down = blockPos.down();
+        BlockState downState = mc.world.getBlockState(down);
+        if (downState.getBlock() == Blocks.BEDROCK) return MobSpawn.Never;
+
+        if (!topSurface(downState)) {
+            if (downState.getCollisionShape(mc.world, down) != VoxelShapes.fullCube())
                 return MobSpawn.Never;
-            if (mc.world.getBlockState(blockPos.down()).isTransparent(mc.world, blockPos.down())) return MobSpawn.Never;
+            if (downState.isTransparent(mc.world, down)) return MobSpawn.Never;
         }
 
-        if (mc.world.getLightLevel(blockPos, 0) <= spawnLightLimit) return MobSpawn.Potential;
-        else if (mc.world.getLightLevel(LightType.BLOCK, blockPos) <= spawnLightLimit) return MobSpawn.Always;
+        if (mc.world.getLightLevel(LightType.BLOCK, blockPos) > spawnLightLimit) return MobSpawn.Never;
+        else if (mc.world.getLightLevel(LightType.SKY, blockPos) > spawnLightLimit) return  MobSpawn.Potential;
 
-        return MobSpawn.Never;
+        return MobSpawn.Always;
     }
 
     public static boolean topSurface(BlockState blockState) {
         if (blockState.getBlock() instanceof SlabBlock && blockState.get(SlabBlock.TYPE) == SlabType.TOP) return true;
         else return blockState.getBlock() instanceof StairsBlock && blockState.get(StairsBlock.HALF) == BlockHalf.TOP;
+    }
+
+    // Finds the best block direction to get when interacting with the block.
+    public static Direction getDirection(BlockPos pos) {
+        Vec3d eyesPos = new Vec3d(mc.player.getX(), mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()), mc.player.getZ());
+        if ((double) pos.getY() > eyesPos.y) {
+            if (mc.world.getBlockState(pos.add(0, -1, 0)).isReplaceable()) return Direction.DOWN;
+            else return mc.player.getHorizontalFacing().getOpposite();
+        }
+        if (!mc.world.getBlockState(pos.add(0, 1, 0)).isReplaceable()) return mc.player.getHorizontalFacing().getOpposite();
+        return Direction.UP;
     }
 
     public enum MobSpawn {
@@ -324,5 +341,12 @@ public class BlockUtils {
         }
 
         return speed;
+    }
+
+    /**
+     * Mutates a {@link BlockPos.Mutable} around an origin
+     */
+    public static BlockPos.Mutable mutateAround(BlockPos.Mutable mutable, BlockPos origin, int xOffset, int yOffset, int zOffset) {
+        return mutable.set(origin.getX() + xOffset, origin.getY() + yOffset, origin.getZ() + zOffset);
     }
 }
